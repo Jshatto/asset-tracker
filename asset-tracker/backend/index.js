@@ -20,7 +20,17 @@ app.get("/", (req, res) => {
   res.send("Asset Tracker backend is running! 🚀");
 });
 
+const authRoutes = require("./routes/auth");
+app.use("/api/auth", authRoutes);
+const clientRoutes = require("./routes/clients");
+app.use("/api/clients", clientRoutes);
+const assetRoutes = require("./routes/assets");
+app.use("/api/assets", assetRoutes);
+
 // Start server
 app.listen(PORT, () => {
   console.log(`Server is listening on port ${PORT}`);
 });
+
+const testRoutes = require("./routes/test");
+app.use("/api/test", testRoutes);
