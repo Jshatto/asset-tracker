@@ -1,14 +1,21 @@
-const pool = require("./connection");
-const fs = require("fs");
+import pool from "./connection.js";
 
-const sql = fs.readFileSync(__dirname + "/init.sql", "utf8");
+try {
+  await pool.query(`
+    ALTER TABLE assets ADD COLUMN IF NOT EXISTS useful_life INTEGER;
+  `);
 
-pool.query(sql)
-  .then(() => {
-    console.log("✅ Users table created.");
-    pool.end();
-  })
-  .catch((err) => {
-    console.error("❌ Error creating table:", err);
-    pool.end();
-  });
+  await pool.query(`
+    ALTER TABLE assets ADD COLUMN IF NOT EXISTS depreciation_method TEXT;
+  `);
+
+  await pool.query(`
+    ALTER TABLE assets ADD COLUMN IF NOT EXISTS description TEXT;
+  `);
+
+  console.log("✅ Table updated with new columns");
+  process.exit();
+} catch (err) {
+  console.error("❌ Error updating table:", err.message);
+  process.exit(1);
+}

@@ -48,36 +48,46 @@ async function getAssetById(req, res) {
 // POST /api/assets
 async function createAsset(req, res) {
   const {
-    name,
-    category,
-    cost,
-    purchase_date,
-    sale_price,
-    sale_date,
-    write_off_reason,
-    client_id,
-    useful_life,
-    depreciation_start,
-  } = req.body;
+  name,
+  category,
+  cost,
+  purchase_date,
+  sale_price,
+  sale_date,
+  write_off_reason,
+  depreciation_method,
+  useful_life,
+  description,
+  client_id,
+} = req.body;
 
-  const effectiveClientId = req.user.role === "admin" ? client_id : req.user.client_id;
+const effectiveClientId = req.user.client_id;
 
-  if (!name || !effectiveClientId) {
-    return res.status(400).json({ message: "Name and client ID are required." });
+  if (!name) {
+    return res.status(400).json({ message: "Name required." });
   }
 
   try {
     const result = await pool.query(
       `INSERT INTO assets (
         name, category, cost, purchase_date, sale_price, sale_date, write_off_reason,
-        client_id, useful_life, depreciation_start
+        depreciation_method, useful_life, description, client_id
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
-      [
-        name, category, cost, purchase_date, sale_price, sale_date,
-        write_off_reason, effectiveClientId, useful_life || 5,
-        depreciation_start || purchase_date
-      ]
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+    [
+  name,
+  category,
+  cost,
+  purchase_date,
+  sale_price,
+  sale_date,
+  write_off_reason,
+  depreciation_method,
+  useful_life,
+  description,
+  req.user.client_id
+]
+
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
