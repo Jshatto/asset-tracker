@@ -1,17 +1,17 @@
 import { Routes, Route, Navigate } from "react-router-dom";
+import { useAuth } from "./context/AuthContext";
 import LoginPage from "./pages/LoginPage";
 import Dashboard from "./pages/Dashboard";
-import { useAuth } from "./context/AuthContext";
 
 function App() {
   const { token } = useAuth();
 
   return (
     <Routes>
-      {/* explicit login route */}
+      {/* 1. Explicit login route */}
       <Route path="/login" element={<LoginPage />} />
 
-      {/* root redirects based on auth */}
+      {/* 2. Root: redirect based on auth */}
       <Route
         path="/"
         element={
@@ -21,7 +21,7 @@ function App() {
         }
       />
 
-      {/* protected dashboard */}
+      {/* 3. Dashboard (protected) */}
       <Route
         path="/dashboard"
         element={
@@ -30,6 +30,9 @@ function App() {
             : <Navigate to="/login" replace />
         }
       />
+
+      {/* 4. Catch–all unknown paths → root */}
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
