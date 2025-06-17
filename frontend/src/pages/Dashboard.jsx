@@ -438,6 +438,11 @@ const handleImport = async (rows) => {
   Asset deleted successfully!
   </Alert>
 </Snackbar>
+<ImportAssetsModal
+  open={importModalOpen}
+  onClose={() => setImportModalOpen(false)}
+  onImport={handleImport}
+/>
     </div>
   );
 }
