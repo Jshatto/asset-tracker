@@ -231,6 +231,13 @@ setErrorOpen(true);
         <Button variant="contained" onClick={() => setShowModal(true)}>
           ➕ Add Asset
         </Button>
+        <Button
+  variant="outlined"
+  sx={{ ml: 2 }}
+  onClick={() => setImportModalOpen(true)}
+>
+  📥 Import Assets
+</Button>
       </Box>
 
       {loading ? (
