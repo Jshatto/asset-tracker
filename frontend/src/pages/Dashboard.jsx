@@ -134,6 +134,29 @@ setErrorOpen(true);
         (a) =>
           new Date(a.purchase_date).getFullYear().toString() === yearFilter
       );
+      // Called with parsed CSV rows
+const handleImport = async (rows) => {
+  try {
+    // Send to your backend import endpoint
+    await axios.post(
+      "/api/assets/import",
+      rows,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    // Refresh list & show success
+    await refreshAssets();
+    setSuccessOpen(true);
+
+  } catch (err) {
+    console.error("Import failed:", err.response?.data || err.message);
+    setErrorMessage(err.response?.data?.message || err.message);
+    setErrorOpen(true);
+  } finally {
+    setImportModalOpen(false);
+  }
+};
+
     }
 
     switch (sortOption) {
