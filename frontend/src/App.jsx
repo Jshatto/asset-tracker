@@ -1,40 +1,41 @@
+// src/App.jsx
+import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
-import LoginPage from "./pages/LoginPage";
+import Login from "./pages/login";
 import Dashboard from "./pages/Dashboard";
+import PrivateRoute from "./components/PrivateRoute";
 
-function App() {
+export default function App() {
   const { token } = useAuth();
 
   return (
     <Routes>
-      {/* 1. Explicit login route */}
-      <Route path="/login" element={<LoginPage />} />
+      {/* Public login page */}
+      <Route path="/login" element={<Login />} />
 
-      {/* 2. Root: redirect based on auth */}
+      {/* Root: redirect based on auth */}
       <Route
         path="/"
         element={
-          token 
-            ? <Navigate to="/dashboard" replace /> 
+          token
+            ? <Navigate to="/dashboard" replace />
             : <Navigate to="/login" replace />
         }
       />
 
-      {/* 3. Dashboard (protected) */}
+      {/* Protected dashboard */}
       <Route
         path="/dashboard"
         element={
-          token 
-            ? <Dashboard /> 
-            : <Navigate to="/login" replace />
+          <PrivateRoute>
+            <Dashboard />
+          </PrivateRoute>
         }
       />
 
-      {/* 4. Catch–all unknown paths → root */}
+      {/* Catch-all: send anything else back to root */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
-
-export default App;
