@@ -1,28 +1,30 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 import {
-  Modal,
   Box,
   Button,
   TextField,
   MenuItem,
   Typography,
+  Modal,
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableBody,
   Snackbar,
   Alert,
 } from "@mui/material";
-import ImportAssetsModal from "../components/ImportAssetsModal";  // ← Add this
-
+import ImportAssetsModal from "../components/ImportAssetsModal";
 
 function Dashboard() {
   const { token } = useAuth();
   const [assets, setAssets] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  // Add‐asset modal state
   const [showModal, setShowModal] = useState(false);
-  const [search, setSearch] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('');
-  const [yearFilter, setYearFilter] = useState('');
-  const [sortOption, setSortOption] = useState('');
   const [newAsset, setNewAsset] = useState({
     name: "",
     cost: "",
@@ -32,16 +34,22 @@ function Dashboard() {
     useful_life: "",
     description: "",
   });
+
+  // Import‐CSV modal state
+  const [importModalOpen, setImportModalOpen] = useState(false);
+
+  // Filter / search / sort state
+  const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [yearFilter, setYearFilter] = useState("");
+  const [sortOption, setSortOption] = useState("");
+
+  // Snackbars
   const [successOpen, setSuccessOpen] = useState(false);
   const [errorOpen, setErrorOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [deleteSuccessOpen, setDeleteSuccessOpen] = useState(false);
-  const [importModalOpen, setImportModalOpen] = useState(false);
 
-
-
-  
-
+  // Fetch assets
   const refreshAssets = async () => {
     setLoading(true);
     try {
@@ -51,6 +59,8 @@ function Dashboard() {
       setAssets(res.data);
     } catch (err) {
       console.error("Error refreshing assets", err);
+      setErrorMessage(err.message);
+      setErrorOpen(true);
     } finally {
       setLoading(false);
     }
@@ -60,105 +70,87 @@ function Dashboard() {
     refreshAssets();
   }, [token]);
 
- const handleSubmit = async (e) => {
-  e.preventDefault();
-  console.log("📤 Submitting asset:", newAsset);
-  try {
-    const res = await axios.post("/api/assets", newAsset, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    console.log("✅ Asset created:", res.data);
-
-    // Optimistically add the asset to the list
-    setAssets((prev) => [...prev, res.data]);
-
-    // Clear and close
-    setShowModal(false);
-    setNewAsset({
-      name: "",
-      cost: "",
-      purchase_date: "",
-      category: "",
-      depreciation_method: "",
-      useful_life: "",
-      description: "",
-    });
-    setSuccessOpen(true);
-
-
-    // Smooth scroll (optional)
-    window.scrollTo({ top: 0, behavior: "smooth" });
-
-  } catch (err) {
-    console.error("❌ Failed to create asset:", err.response?.data || err.message);
-   const message = err.response?.data?.message || err.message;
-console.error("❌ Failed to create asset:", message);
-setErrorMessage(message);
-setErrorOpen(true);
-  }
-};
-
-
-  const handleDelete = async (id) => {
-    const confirmDelete = window.confirm("Are you sure you want to delete this asset?");
-    if (!confirmDelete) return;
-
+  // Handle add‐asset form submit
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    console.log("📤 Submitting asset:", newAsset);
     try {
-  await axios.delete(`/api/assets/${id}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  setAssets((prev) => prev.filter((a) => a.id !== id));
-  setDeleteSuccessOpen(true); // ✅ show success toast
-} catch (err) {
-  alert("Failed to delete asset");
-  console.error("Delete error:", err);
-}
+      const res = await axios.post("/api/assets", newAsset, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      console.log("✅ Asset created:", res.data);
+      setAssets((prev) => [...prev, res.data]);
+      setShowModal(false);
+      setNewAsset({
+        name: "",
+        cost: "",
+        purchase_date: "",
+        category: "",
+        depreciation_method: "",
+        useful_life: "",
+        description: "",
+      });
+      setSuccessOpen(true);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (err) {
+      console.error("❌ Failed to create asset:", err.response?.data || err.message);
+      const msg = err.response?.data?.message || err.message;
+      setErrorMessage(msg);
+      setErrorOpen(true);
+    }
   };
 
+  // Handle delete
+  const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this asset?")) return;
+    try {
+      await axios.delete(`/api/assets/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setAssets((prev) => prev.filter((a) => a.id !== id));
+      setSuccessOpen(true);
+    } catch (err) {
+      console.error("Delete error:", err);
+      setErrorMessage(err.message);
+      setErrorOpen(true);
+    }
+  };
+
+  // Handle CSV import
+  const handleImport = async (rows) => {
+    try {
+      await axios.post("/api/assets/import", rows, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      await refreshAssets();
+      setSuccessOpen(true);
+    } catch (err) {
+      console.error("Import failed:", err.response?.data || err.message);
+      const msg = err.response?.data?.message || err.message;
+      setErrorMessage(msg);
+      setErrorOpen(true);
+    } finally {
+      setImportModalOpen(false);
+    }
+  };
+
+  // Filtering/sorting logic
   const getFilteredAssets = () => {
     let filtered = [...assets];
-
     if (search) {
       filtered = filtered.filter((a) =>
         a.name.toLowerCase().includes(search.toLowerCase())
       );
     }
-
     if (categoryFilter) {
       filtered = filtered.filter((a) => a.category === categoryFilter);
     }
-
     if (yearFilter) {
       filtered = filtered.filter(
         (a) =>
           new Date(a.purchase_date).getFullYear().toString() === yearFilter
       );
-      // Called with parsed CSV rows
-const handleImport = async (rows) => {
-  try {
-    // Send to your backend import endpoint
-    await axios.post(
-      "/api/assets/import",
-      rows,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-
-    // Refresh list & show success
-    await refreshAssets();
-    setSuccessOpen(true);
-
-  } catch (err) {
-    console.error("Import failed:", err.response?.data || err.message);
-    setErrorMessage(err.response?.data?.message || err.message);
-    setErrorOpen(true);
-  } finally {
-    setImportModalOpen(false);
-  }
-};
-
     }
-
     switch (sortOption) {
       case "name-asc":
         filtered.sort((a, b) => a.name.localeCompare(b.name));
@@ -177,34 +169,35 @@ const handleImport = async (rows) => {
           a.depreciation_method.localeCompare(b.depreciation_method)
         );
         break;
-      default:
-        break;
     }
-
     return filtered;
   };
 
   const groupedAssets = () => {
     const groups = {};
     for (const asset of getFilteredAssets()) {
-      if (!groups[asset.category]) {
-        groups[asset.category] = [];
-      }
+      groups[asset.category] = groups[asset.category] || [];
       groups[asset.category].push(asset);
     }
     return groups;
   };
 
-  const purchaseYears = [...new Set(assets.map((a) => new Date(a.purchase_date).getFullYear().toString()))];
+  const purchaseYears = Array.from(
+    new Set(
+      assets.map((a) =>
+        new Date(a.purchase_date).getFullYear().toString()
+      )
+    )
+  );
 
   return (
-    <div style={{ padding: "1rem", maxWidth: "1000px", margin: "auto" }}>
+    <Box sx={{ p: 2, maxWidth: 1000, mx: "auto" }}>
       <Typography variant="h4" gutterBottom>
         📊 Asset Dashboard
       </Typography>
 
-      {/* Filters/Search/Sort */}
-      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, mb: 2 }}>
+      {/* Controls: search, filters, sort, add/import */}
+      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 2 }}>
         <TextField
           label="Search"
           value={search}
@@ -217,23 +210,27 @@ const handleImport = async (rows) => {
           onChange={(e) => setCategoryFilter(e.target.value)}
         >
           <MenuItem value="">All</MenuItem>
-          <MenuItem value="Machinery and Equipment">Machinery and Equipment</MenuItem>
+          <MenuItem value="Machinery and Equipment">
+            Machinery & Equipment
+          </MenuItem>
           <MenuItem value="Vehicles">Vehicles</MenuItem>
           <MenuItem value="Furniture">Furniture</MenuItem>
           <MenuItem value="Intangibles">Intangibles</MenuItem>
           <MenuItem value="179 Assets">179 Assets</MenuItem>
-          <MenuItem value="Bonus Depreciation Assets">Bonus Depreciation Assets</MenuItem>
+          <MenuItem value="Bonus Depreciation Assets">
+            Bonus Depreciation Assets
+          </MenuItem>
         </TextField>
         <TextField
-          label="Purchase Year"
+          label="Year"
           select
           value={yearFilter}
           onChange={(e) => setYearFilter(e.target.value)}
         >
           <MenuItem value="">All</MenuItem>
-          {purchaseYears.map((year) => (
-            <MenuItem key={year} value={year}>
-              {year}
+          {purchaseYears.map((yr) => (
+            <MenuItem key={yr} value={yr}>
+              {yr}
             </MenuItem>
           ))}
         </TextField>
@@ -250,36 +247,46 @@ const handleImport = async (rows) => {
           <MenuItem value="cost-desc">Cost (High–Low)</MenuItem>
           <MenuItem value="method">Depreciation Method</MenuItem>
         </TextField>
-
-        <Button variant="contained" onClick={() => setShowModal(true)}>
+        <Button
+          variant="contained"
+          onClick={() => setShowModal(true)}
+        >
           ➕ Add Asset
         </Button>
         <Button
-  variant="outlined"
-  sx={{ ml: 2 }}
-  onClick={() => setImportModalOpen(true)}
->
-  📥 Import Assets
-</Button>
+          variant="outlined"
+          onClick={() => setImportModalOpen(true)}
+        >
+          📥 Import Assets
+        </Button>
       </Box>
 
+      {/* Asset list */}
       {loading ? (
-        <p>Loading assets...</p>
+        <Typography>Loading assets…</Typography>
       ) : (
-        Object.entries(groupedAssets()).map(([category, group]) => (
+        Object.entries(groupedAssets()).map(([category, grp]) => (
           <Box key={category} sx={{ mb: 3 }}>
             <Typography variant="h6">{category}</Typography>
-            {group.map((asset) => (
-              <Box key={asset.id} sx={{ border: "1px solid #ccc", p: 1, mb: 1 }}>
+            {grp.map((asset) => (
+              <Box
+                key={asset.id}
+                sx={{
+                  border: "1px solid #ccc",
+                  p: 1,
+                  mb: 1,
+                }}
+              >
                 <strong>{asset.name}</strong> — ${asset.cost} —{" "}
                 {new Date(asset.purchase_date).toLocaleDateString()}
                 <br />
-                Method: {asset.depreciation_method}, Life: {asset.useful_life} years
+                Method: {asset.depreciation_method}, Life:{" "}
+                {asset.useful_life} yrs
                 <br />
                 <Button
-                  onClick={() => handleDelete(asset.id)}
-                  color="error"
                   size="small"
+                  color="error"
+                  onClick={() => handleDelete(asset.id)}
                   sx={{ mt: 1 }}
                 >
                   🗑 Delete
@@ -300,15 +307,14 @@ const handleImport = async (rows) => {
             transform: "translate(-50%, -50%)",
             width: 400,
             bgcolor: "background.paper",
-            borderRadius: "8px",
+            borderRadius: 1,
             boxShadow: 24,
-            p: 4,
+            p: 3,
           }}
         >
           <Typography variant="h6" gutterBottom>
             Add New Asset
           </Typography>
-
           <form onSubmit={handleSubmit}>
             <TextField
               label="Name"
@@ -316,7 +322,9 @@ const handleImport = async (rows) => {
               required
               margin="dense"
               value={newAsset.name}
-              onChange={(e) => setNewAsset({ ...newAsset, name: e.target.value })}
+              onChange={(e) =>
+                setNewAsset({ ...newAsset, name: e.target.value })
+              }
             />
             <TextField
               label="Purchase Price"
@@ -325,7 +333,9 @@ const handleImport = async (rows) => {
               required
               margin="dense"
               value={newAsset.cost}
-              onChange={(e) => setNewAsset({ ...newAsset, cost: e.target.value })}
+              onChange={(e) =>
+                setNewAsset({ ...newAsset, cost: e.target.value })
+              }
             />
             <TextField
               label="Purchase Date"
@@ -336,7 +346,10 @@ const handleImport = async (rows) => {
               InputLabelProps={{ shrink: true }}
               value={newAsset.purchase_date}
               onChange={(e) =>
-                setNewAsset({ ...newAsset, purchase_date: e.target.value })
+                setNewAsset({
+                  ...newAsset,
+                  purchase_date: e.target.value,
+                })
               }
             />
             <TextField
@@ -346,14 +359,20 @@ const handleImport = async (rows) => {
               required
               margin="dense"
               value={newAsset.category}
-              onChange={(e) => setNewAsset({ ...newAsset, category: e.target.value })}
+              onChange={(e) =>
+                setNewAsset({ ...newAsset, category: e.target.value })
+              }
             >
-              <MenuItem value="Machinery and Equipment">Machinery and Equipment</MenuItem>
+              <MenuItem value="Machinery and Equipment">
+                Machinery & Equipment
+              </MenuItem>
               <MenuItem value="Vehicles">Vehicles</MenuItem>
               <MenuItem value="Furniture">Furniture</MenuItem>
               <MenuItem value="Intangibles">Intangibles</MenuItem>
               <MenuItem value="179 Assets">179 Assets</MenuItem>
-              <MenuItem value="Bonus Depreciation Assets">Bonus Depreciation Assets</MenuItem>
+              <MenuItem value="Bonus Depreciation Assets">
+                Bonus Depreciation Assets
+              </MenuItem>
             </TextField>
             <TextField
               label="Depreciation Method"
@@ -363,7 +382,10 @@ const handleImport = async (rows) => {
               margin="dense"
               value={newAsset.depreciation_method}
               onChange={(e) =>
-                setNewAsset({ ...newAsset, depreciation_method: e.target.value })
+                setNewAsset({
+                  ...newAsset,
+                  depreciation_method: e.target.value,
+                })
               }
             >
               <MenuItem value="MACRS">MACRS</MenuItem>
@@ -377,21 +399,26 @@ const handleImport = async (rows) => {
               margin="dense"
               value={newAsset.useful_life}
               onChange={(e) =>
-                setNewAsset({ ...newAsset, useful_life: e.target.value })
+                setNewAsset({
+                  ...newAsset,
+                  useful_life: e.target.value,
+                })
               }
             />
             <TextField
               label="Description"
-              fullWidth
               multiline
               rows={2}
+              fullWidth
               margin="dense"
               value={newAsset.description}
               onChange={(e) =>
-                setNewAsset({ ...newAsset, description: e.target.value })
+                setNewAsset({
+                  ...newAsset,
+                  description: e.target.value,
+                })
               }
             />
-
             <Button
               type="submit"
               variant="contained"
@@ -404,46 +431,46 @@ const handleImport = async (rows) => {
           </form>
         </Box>
       </Modal>
+
+      {/* Import CSV Modal */}
+      <ImportAssetsModal
+        open={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+        onImport={handleImport}
+      />
+
+      {/* Success Snackbar */}
       <Snackbar
-  open={successOpen}
-  autoHideDuration={3000}
-  onClose={() => setSuccessOpen(false)}
-  anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
->
-  <Alert onClose={() => setSuccessOpen(false)} severity="success" sx={{ width: '100%' }}>
-  Asset added successfully!
-  </Alert>
-</Snackbar>
-<Snackbar
-  open={errorOpen}
-  autoHideDuration={4000}
-  onClose={() => setErrorOpen(false)}
-  anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
->
-  <Alert onClose={() => setErrorOpen(false)} severity="error" sx={{ width: "100%" }}>
-    ❌ {errorMessage}
-  </Alert>
-</Snackbar>
-<Snackbar
-  open={deleteSuccessOpen}
-  autoHideDuration={3000}
-  onClose={() => setDeleteSuccessOpen(false)}
-  anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
->
-  <Alert
-    onClose={() => setDeleteSuccessOpen(false)}
-    severity="success"
-    sx={{ width: "100%" }}
-  >
-  Asset deleted successfully!
-  </Alert>
-</Snackbar>
-<ImportAssetsModal
-  open={importModalOpen}
-  onClose={() => setImportModalOpen(false)}
-  onImport={handleImport}
-/>
-    </div>
+        open={successOpen}
+        autoHideDuration={3000}
+        onClose={() => setSuccessOpen(false)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          onClose={() => setSuccessOpen(false)}
+          severity="success"
+          sx={{ width: "100%" }}
+        >
+          Asset saved successfully!
+        </Alert>
+      </Snackbar>
+
+      {/* Error Snackbar */}
+      <Snackbar
+        open={errorOpen}
+        autoHideDuration={4000}
+        onClose={() => setErrorOpen(false)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          onClose={() => setErrorOpen(false)}
+          severity="error"
+          sx={{ width: "100%" }}
+        >
+          {errorMessage}
+        </Alert>
+      </Snackbar>
+    </Box>
   );
 }
 
