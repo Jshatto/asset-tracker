@@ -4,15 +4,29 @@ import pool from "../db/connection.js";
 // Get all assets for a client
 const getAllAssets = async (req, res) => {
   try {
-    const result = await pool.query(
-      "SELECT * FROM assets WHERE client_id = $1 ORDER BY created_at DESC",
-      [req.user.client_id]
-    );
+    const { role, client_id } = req.user;
+
+    let result;
+    // In getAllAssets:
+if (role === "admin") {
+  result = await pool.query(
+    "SELECT * FROM assets WHERE archived = FALSE ORDER BY created_at DESC"
+  );
+} else {
+  result = await pool.query(
+    "SELECT * FROM assets WHERE client_id = $1 AND archived = FALSE ORDER BY created_at DESC",
+    [client_id]
+  );
+}
+
+
     res.json(result.rows);
   } catch (err) {
+    console.error("Error in getAllAssets:", err);
     res.status(500).json({ message: "Error fetching assets." });
   }
 };
+
 
 // Get a single asset by ID
 const getAssetById = async (req, res) => {
@@ -121,21 +135,40 @@ const updateAsset = async (req, res) => {
     res.status(500).json({ message: "Error updating asset." });
   }
 };
-
-// Delete an asset
+// Soft-delete (archive) an asset
 const deleteAsset = async (req, res) => {
   const { id } = req.params;
+  const { role, client_id } = req.user;
+
   try {
-    const result = await pool.query(
-      "DELETE FROM assets WHERE id = $1 AND client_id = $2 RETURNING *",
-      [id, req.user.client_id]
-    );
-    if (!result.rows.length) return res.status(404).json({ message: "Asset not found." });
-    res.json({ message: "Asset deleted." });
+    let result;
+    if (role === "admin") {
+      // Admin can archive any asset
+      result = await pool.query(
+        "UPDATE assets SET archived = TRUE WHERE id = $1 RETURNING *",
+        [id]
+      );
+    } else {
+      // Client can only archive their own
+      result = await pool.query(
+        "UPDATE assets SET archived = TRUE WHERE id = $1 AND client_id = $2 RETURNING *",
+        [id, client_id]
+      );
+    }
+
+    if (!result.rows.length) {
+      return res
+        .status(404)
+        .json({ message: "Asset not found or not permitted." });
+    }
+
+    res.json({ message: "Asset archived.", asset: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ message: "Error deleting asset." });
+    console.error("Error archiving asset:", err);
+    res.status(500).json({ message: "Error archiving asset." });
   }
 };
+
 
  // Import multiple assets from CSV
 const importAssets = async (req, res) => {
