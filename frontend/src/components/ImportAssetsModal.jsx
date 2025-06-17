@@ -4,20 +4,21 @@ import {
   Modal,
   Box,
   Button,
+  Input,
   Typography,
   Table,
   TableHead,
   TableRow,
   TableCell,
-  TableBody
+  TableBody,
 } from "@mui/material";
 
 function ImportAssetsModal({ open, onClose, onImport }) {
   const [csvRows, setCsvRows] = useState([]);
 
-  // 1. Handle file selection and parse CSV
+  // Parse CSV on file select
   const handleFileChange = (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (!file) return;
 
     Papa.parse(file, {
@@ -25,11 +26,11 @@ function ImportAssetsModal({ open, onClose, onImport }) {
       skipEmptyLines: true,
       complete: (results) => {
         setCsvRows(results.data);
-      }
+      },
     });
   };
 
-  // 2. When user confirms, call onImport with parsed rows
+  // When user clicks “Import”
   const handleImportClick = () => {
     onImport(csvRows);
     onClose();
@@ -37,21 +38,40 @@ function ImportAssetsModal({ open, onClose, onImport }) {
 
   return (
     <Modal open={open} onClose={onClose}>
-      <Box sx={{ /* your styling here */ p: 4, bgcolor: "background.paper", mx: "auto", my: "10%", width: 600 }}>
+      <Box
+        sx={{
+          position: "absolute",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          width: 600,
+          bgcolor: "background.paper",
+          borderRadius: 2,
+          boxShadow: 24,
+          p: 4,
+        }}
+      >
         <Typography variant="h6" gutterBottom>
           Import Assets from CSV
         </Typography>
 
-        {/* File input */}
-        <input
-          type="file"
+        {/* Hidden Input + Label/Button */}
+        <Input
           accept=".csv"
+          id="csv-file-input"
+          type="file"
           onChange={handleFileChange}
+          sx={{ display: "none" }}
         />
+        <label htmlFor="csv-file-input">
+          <Button variant="outlined" component="span" sx={{ mb: 2 }}>
+            Select CSV File
+          </Button>
+        </label>
 
-        {/* 3. Preview table if rows exist */}
+        {/* Preview */}
         {csvRows.length > 0 && (
-          <Table size="small" sx={{ mt: 2, maxHeight: 300, overflow: "auto" }}>
+          <Table size="small" sx={{ mb: 2, maxHeight: 300, overflow: "auto" }}>
             <TableHead>
               <TableRow>
                 <TableCell>Name</TableCell>
@@ -63,8 +83,8 @@ function ImportAssetsModal({ open, onClose, onImport }) {
               </TableRow>
             </TableHead>
             <TableBody>
-              {csvRows.map((row, idx) => (
-                <TableRow key={idx}>
+              {csvRows.map((row, i) => (
+                <TableRow key={i}>
                   <TableCell>{row.Name}</TableCell>
                   <TableCell>{row.Cost}</TableCell>
                   <TableCell>{row["Purchase Date"]}</TableCell>
@@ -77,15 +97,15 @@ function ImportAssetsModal({ open, onClose, onImport }) {
           </Table>
         )}
 
-        {/* Import & Cancel buttons */}
-        <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 2 }}>
-          <Button onClick={onClose} sx={{ mr: 2 }}>Cancel</Button>
+        {/* Actions */}
+        <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1 }}>
+          <Button onClick={onClose}>Cancel</Button>
           <Button
             variant="contained"
             onClick={handleImportClick}
             disabled={csvRows.length === 0}
           >
-            Import {csvRows.length} Rows
+            Import {csvRows.length} Row{csvRows.length !== 1 ? "s" : ""}
           </Button>
         </Box>
       </Box>
