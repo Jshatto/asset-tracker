@@ -136,6 +136,16 @@ const deleteAsset = async (req, res) => {
     res.status(500).json({ message: "Error deleting asset." });
   }
 };
+/**
+ * importAssets
+ * Accepts an array of asset objects and creates them in the database.
+ * TODO: implement validation and bulk insert logic.
+ */
+const importAssets = async (req, res) => {
+  // For now, just confirm the route is wired up
+  return res.status(501).json({ message: "importAssets not implemented" });
+};
+
 
 // Export all functions
 export default {
@@ -144,4 +154,5 @@ export default {
   createAsset,
   updateAsset,
   deleteAsset,
+  importAssets
 };
