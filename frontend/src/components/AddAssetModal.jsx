@@ -36,6 +36,7 @@ function AddAssetModal({ onClose, onAdd }) {
       });
       onAdd(res.data);
     } catch (err) {
+      console.error(err);
       setError('❌ Failed to create asset.');
     }
   };
