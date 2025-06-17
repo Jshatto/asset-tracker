@@ -13,5 +13,10 @@ router.get("/:id", assetController.getAssetById);
 router.post("/", assetController.createAsset);
 router.put("/:id", assetController.updateAsset);
 router.delete("/:id", assetController.deleteAsset);
-
+// Import multiple assets from CSV
+router.post(
+  "/import",
+  authMiddleware,
+  assetController.importAssets
+);
 export default router;

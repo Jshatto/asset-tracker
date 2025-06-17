@@ -137,6 +137,77 @@ const deleteAsset = async (req, res) => {
   }
 };
 
+ // Import multiple assets from CSV
+const importAssets = async (req, res) => {
+  const rows = req.body;
+  const client_id = req.user.client_id;
+
+  // 1. Basic validation
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return res.status(400).json({ message: "No asset data provided" });
+  }
+
+  const dbClient = await pool.connect();
+  try {
+    await dbClient.query("BEGIN");
+
+    for (const row of rows) {
+      const {
+        name,
+        cost,
+        purchase_date,
+        category,
+        useful_life,
+        depreciation_method,
+        description, // optional
+      } = row;
+
+      // 2. Validate required fields per row
+      if (
+        !name ||
+        cost == null ||
+        !purchase_date ||
+        !category ||
+        useful_life == null ||
+        !depreciation_method
+      ) {
+        throw new Error(
+          `Missing required field in one of the rows: ${JSON.stringify(row)}`
+        );
+      }
+
+      // 3. Insert each asset
+      await dbClient.query(
+        `INSERT INTO assets
+          (name, cost, purchase_date, category,
+           useful_life, depreciation_method, description, client_id)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+        [
+          name,
+          cost,
+          purchase_date,
+          category,
+          useful_life,
+          depreciation_method,
+          description || null,
+          client_id,
+        ]
+      );
+    }
+
+    await dbClient.query("COMMIT");
+    res.json({ message: "Assets imported successfully" });
+  } catch (err) {
+    await dbClient.query("ROLLBACK");
+    console.error("Error importing assets:", err);
+    res
+      .status(500)
+      .json({ message: err.message || "Error importing assets" });
+  } finally {
+    dbClient.release();
+  }
+};
+
 // Export all functions
 export default {
   getAllAssets,
@@ -144,4 +215,5 @@ export default {
   createAsset,
   updateAsset,
   deleteAsset,
+  importAssets
 };
