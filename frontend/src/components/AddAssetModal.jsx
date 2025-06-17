@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 function AddAssetModal({ onClose, onAdd }) {
@@ -31,7 +31,7 @@ function AddAssetModal({ onClose, onAdd }) {
     }
 
     try {
-      const res = await axios.post('/api/assets', form, {
+      const res = await api.post('/assets', form, {
         headers: { Authorization: `Bearer ${token}` }
       });
       onAdd(res.data);

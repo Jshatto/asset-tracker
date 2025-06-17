@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import {
   Box,
@@ -53,7 +53,7 @@ function Dashboard() {
   const refreshAssets = async () => {
     setLoading(true);
     try {
-      const res = await axios.get("/api/assets", {
+      const res = await api.get("/assets", {
         headers: { Authorization: `Bearer ${token}` },
       });
       setAssets(res.data);
@@ -75,7 +75,7 @@ function Dashboard() {
     e.preventDefault();
     console.log("📤 Submitting asset:", newAsset);
     try {
-      const res = await axios.post("/api/assets", newAsset, {
+      const res = await api.post("/assets", newAsset, {
         headers: { Authorization: `Bearer ${token}` },
       });
       console.log("✅ Asset created:", res.data);
@@ -104,7 +104,7 @@ function Dashboard() {
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this asset?")) return;
     try {
-      await axios.delete(`/api/assets/${id}`, {
+      await api.delete(`/assets/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setAssets((prev) => prev.filter((a) => a.id !== id));
@@ -119,7 +119,7 @@ function Dashboard() {
   // Handle CSV import
   const handleImport = async (rows) => {
     try {
-      await axios.post("/api/assets/import", rows, {
+      await api.post("/assets/import", rows, {
         headers: { Authorization: `Bearer ${token}` },
       });
       await refreshAssets();
