@@ -36,6 +36,7 @@ function Dashboard() {
   const [errorOpen, setErrorOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [deleteSuccessOpen, setDeleteSuccessOpen] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
 
 
 
