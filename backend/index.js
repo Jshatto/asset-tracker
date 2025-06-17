@@ -5,6 +5,7 @@ import authRoutes from "./routes/auth.js";
 import clientRoutes from "./routes/clients.js";
 import assetRoutes from "./routes/assets.js";
 import pool from "./db/connection.js";
+import testRoutes from "./routes/test.js";
 
 dotenv.config();
 
@@ -19,6 +20,7 @@ app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/clients", clientRoutes);
 app.use("/api/assets", assetRoutes);
+app.use("/api/test", testRoutes);
 
 // Root endpoint (optional test)
 app.get("/", (req, res) => {
