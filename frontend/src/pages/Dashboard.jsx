@@ -15,10 +15,11 @@ import {
   TableBody,
   IconButton,
   Snackbar,
-  Alert,
+  Alert
 } from "@mui/material";
 import ImportAssetsModal from "../components/ImportAssetsModal";
-import AddAssetModal from "../components/AddAssetModal"; // optional
+import AddAssetModal from "../components/AddAssetModal";
+import EditAssetModal from "../components/EditAssetModal";
 import EditIcon from '@mui/icons-material/Edit';
 
 function Dashboard() {
@@ -26,10 +27,10 @@ function Dashboard() {
   const [assets, setAssets] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Add‐asset modal state
-  const [showModal, setShowModal] = useState(false);
-
-  // Import‐CSV modal state
+  // Modals state
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedAsset, setSelectedAsset] = useState(null);
   const [importModalOpen, setImportModalOpen] = useState(false);
 
   // Filter / search / sort state
@@ -78,6 +79,18 @@ function Dashboard() {
       setErrorMessage(err.response?.data?.message || err.message);
       setErrorOpen(true);
     }
+  };
+
+  // Handle edit click
+  const handleEditClick = (asset) => {
+    setSelectedAsset(asset);
+    setShowEditModal(true);
+  };
+
+  // Handle update from modal
+  const handleUpdate = (updatedAsset) => {
+    setAssets((prev) => prev.map((a) => (a.id === updatedAsset.id ? updatedAsset : a)));
+    setSuccessOpen(true);
   };
 
   // Filtering/sorting logic
@@ -134,8 +147,43 @@ function Dashboard() {
 
       {/* Controls: search, filters, sort, add/import */}
       <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 2 }}>
-        {/* ...filters and buttons here... */}
-        <Button variant="contained" onClick={() => setShowModal(true)}>
+        <TextField
+          label="Search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <TextField
+          label="Category"
+          select
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+        >
+          <MenuItem value="">All</MenuItem>
+          {/* ...other categories... */}
+        </TextField>
+        <TextField
+          label="Year"
+          select
+          value={yearFilter}
+          onChange={(e) => setYearFilter(e.target.value)}
+        >
+          <MenuItem value="">All</MenuItem>
+          {purchaseYears.map((yr) => (
+            <MenuItem key={yr} value={yr}>
+              {yr}
+            </MenuItem>
+          ))}
+        </TextField>
+        <TextField
+          label="Sort"
+          select
+          value={sortOption}
+          onChange={(e) => setSortOption(e.target.value)}
+        >
+          <MenuItem value="">None</MenuItem>
+          {/* ...sort options... */}
+        </TextField>
+        <Button variant="contained" onClick={() => setShowAddModal(true)}>
           ➕ Add Asset
         </Button>
         <Button variant="outlined" onClick={() => setImportModalOpen(true)}>
@@ -176,7 +224,7 @@ function Dashboard() {
                   <IconButton
                     size="small"
                     color="primary"
-                    onClick={() => console.log("Edit", asset.id)}
+                    onClick={() => handleEditClick(asset)}
                   >
                     <EditIcon fontSize="small" />
                   </IconButton>
@@ -194,11 +242,17 @@ function Dashboard() {
         </Table>
       )}
 
-      {/* Modals & Snackbars... (unchanged) */}
+      {/* Modals & Snackbars... */}
       <AddAssetModal
-        open={showModal}
-        onClose={() => setShowModal(false)}
-        onSubmit={() => refreshAssets()}
+        open={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onAdd={(asset) => { setAssets(prev => [...prev, asset]); setSuccessOpen(true); }}
+      />
+      <EditAssetModal
+        open={showEditModal}
+        asset={selectedAsset}
+        onClose={() => setShowEditModal(false)}
+        onUpdate={handleUpdate}
       />
       <ImportAssetsModal
         open={importModalOpen}
