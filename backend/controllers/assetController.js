@@ -240,12 +240,9 @@ const importAssets = async (req, res) => {
     dbClient.release();
   }
 };
-// Export non-archived assets as CSV
-import { Parser } from "json2csv";  // at the top with other imports
 
 const exportAssets = async (req, res) => {
   try {
-    // Fetch all non-archived assets (admins get all; clients only theirs)
     const { role, client_id } = req.user;
     const baseQuery = `
       SELECT id, name, category, cost, purchase_date,
@@ -257,15 +254,25 @@ const exportAssets = async (req, res) => {
       ? baseQuery
       : baseQuery + " AND client_id = $1";
     const params = role === "admin" ? [] : [client_id];
-
     const result = await pool.query(query, params);
+
+    // Define fields & header row
     const fields = [
       "id", "name", "category", "cost",
       "purchase_date", "depreciation_method",
       "useful_life", "description"
     ];
-    const json2csv = new Parser({ fields });
-    const csv = json2csv.parse(result.rows);
+    const header = fields.join(",");
+
+    // Build data rows, escaping quotes
+    const dataLines = result.rows.map(row =>
+      fields.map(f => {
+        const val = row[f] == null ? "" : String(row[f]).replace(/"/g, '""');
+        return `"${val}"`;
+      }).join(",")
+    );
+
+    const csv = [header, ...dataLines].join("\r\n");
 
     res.header("Content-Type", "text/csv");
     res.attachment("assets.csv");
@@ -284,5 +291,6 @@ export default {
   createAsset,
   updateAsset,
   deleteAsset,
-  importAssets
+  importAssets,
+  exportAssets
 };
