@@ -4,23 +4,46 @@ import pool from "../db/connection.js";
 // Get all assets for a client
 const getAllAssets = async (req, res) => {
   try {
+    // 1. Parse pagination params
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+
     const { role, client_id } = req.user;
 
-    let result;
-    // In getAllAssets:
-if (role === "admin") {
-  result = await pool.query(
-    "SELECT * FROM assets WHERE archived = FALSE ORDER BY created_at DESC"
-  );
-} else {
-  result = await pool.query(
-    "SELECT * FROM assets WHERE client_id = $1 AND archived = FALSE ORDER BY created_at DESC",
-    [client_id]
-  );
-}
+    // 2. Base WHERE clause
+    let where = "archived = FALSE";
+    const params = [];
 
+    if (role !== "admin") {
+      where += " AND client_id = $1";
+      params.push(client_id);
+    }
 
-    res.json(result.rows);
+    // 3. Count total rows
+    const countQuery = `SELECT COUNT(*) FROM assets WHERE ${where}`;
+    const countResult = await pool.query(countQuery, params);
+    const total = parseInt(countResult.rows[0].count, 10);
+    const pages = Math.ceil(total / limit);
+
+    // 4. Fetch paginated rows
+    // Prepare placeholders for LIMIT/OFFSET
+    const dataParams = [...params, limit, offset];
+    const dataQuery = `
+      SELECT * 
+      FROM assets
+      WHERE ${where}
+      ORDER BY created_at DESC
+      LIMIT $${params.length + 1}
+      OFFSET $${params.length + 2}
+    `;
+    const dataResult = await pool.query(dataQuery, dataParams);
+
+    // 5. Return data with meta
+    res.json({
+      data: dataResult.rows,
+      meta: { page, limit, total, pages }
+    });
   } catch (err) {
     console.error("Error in getAllAssets:", err);
     res.status(500).json({ message: "Error fetching assets." });
@@ -254,8 +277,9 @@ const exportAssets = async (req, res) => {
       ? baseQuery
       : baseQuery + " AND client_id = $1";
     const params = role === "admin" ? [] : [client_id];
-    const result = await pool.query(query, params);
 
+    console.log("DEBUG export query:", query.trim(), "params:", params);
+    const result = await pool.query(query, params);
     // Define fields & header row
     const fields = [
       "id", "name", "category", "cost",
@@ -278,11 +302,10 @@ const exportAssets = async (req, res) => {
     res.attachment("assets.csv");
     res.send(csv);
   } catch (err) {
-    console.error("Error exporting assets:", err);
-    res.status(500).json({ message: "Error exporting assets." });
+    console.error("🚨 exportAssets error:", err.stack || err);
+    res.status(500).json({ message: err.message });
   }
 };
-
 
 // Export all functions
 export default {
