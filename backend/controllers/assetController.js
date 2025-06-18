@@ -240,6 +240,42 @@ const importAssets = async (req, res) => {
     dbClient.release();
   }
 };
+// Export non-archived assets as CSV
+import { Parser } from "json2csv";  // at the top with other imports
+
+const exportAssets = async (req, res) => {
+  try {
+    // Fetch all non-archived assets (admins get all; clients only theirs)
+    const { role, client_id } = req.user;
+    const baseQuery = `
+      SELECT id, name, category, cost, purchase_date,
+             depreciation_method, useful_life, description
+      FROM assets
+      WHERE archived = FALSE
+    `;
+    const query = role === "admin"
+      ? baseQuery
+      : baseQuery + " AND client_id = $1";
+    const params = role === "admin" ? [] : [client_id];
+
+    const result = await pool.query(query, params);
+    const fields = [
+      "id", "name", "category", "cost",
+      "purchase_date", "depreciation_method",
+      "useful_life", "description"
+    ];
+    const json2csv = new Parser({ fields });
+    const csv = json2csv.parse(result.rows);
+
+    res.header("Content-Type", "text/csv");
+    res.attachment("assets.csv");
+    res.send(csv);
+  } catch (err) {
+    console.error("Error exporting assets:", err);
+    res.status(500).json({ message: "Error exporting assets." });
+  }
+};
+
 
 // Export all functions
 export default {
